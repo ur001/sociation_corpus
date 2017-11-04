@@ -38,7 +38,7 @@ def print_top_similar(laf, word_names=None, count=15, assoc_mode=False):
 
 def interactive(laf, count=15, assoc_mode=False):
     # Метод поиска: по словам или по ассоциациям
-    print('\nВведите слово или нажмите [Enter] для показа случайного.\Для выхода введите [q] или [x].')
+    print('\nВведите слово или нажмите [Enter] для показа случайного.\nДля выхода введите [q] или [x].')
     word_names = input()
     while True:
         if word_names in {'q', 'x'}:

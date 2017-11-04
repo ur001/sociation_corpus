@@ -13,6 +13,53 @@ from __future__ import print_function
 # from .utils import DictEncoder
 
 
+class DictEncoder(object):
+    """
+    Вспомогательная фигня для создания/хранения словарей
+    Каждому новому слову сопоставляет целое число
+
+    >>> my_dict = DictEncoder()
+    >>> print my_dict[u'слово']
+    0
+    >>> print my_dict[u'другое слово']
+    1
+    >>> print my_dict.decode[0]
+    слово
+    >>> my_dict.save(file_name)
+    """
+    def __init__(self):
+        self.encode = {}
+        self.decode = []
+
+    def add(self, item):
+        if item in self.encode:
+            return self.encode[item]
+
+        index = len(self.decode)
+        self.decode.append(item)
+        self.encode[item] = index
+        return index
+
+    def save(self, file_name):
+        with open(file_name, 'wb') as file:
+            for item in self.decode:
+                file.write(item.encode('utf-8') + '\n')
+
+    @classmethod
+    def load(cls, file_name):
+        encoder = cls()
+        with open(file_name, 'r') as file:
+            for item in file:
+                encoder.add(item.decode("utf-8").strip())
+        return encoder
+
+    def __getitem__(self, item):
+        return self.add(item)
+
+    def __contains__(self, item):
+        return item in self.encode
+        
+
 def get_top_assoc(word_id, limit=50):
     """
     Возвращает вектор ближайших `limit` ассоциаций к слову 
