@@ -63,5 +63,21 @@ python ./similarity_search.py lsi_1000 король,-мужчина,женщин
 0.319   император
 0.319   девушка
 
+python ./similarity_search.py lsi_1000 столица,франция 1
+столица,франция
+====================
+0.564   париж
+
+python ./similarity_search.py lsi_1000 плотность,объём 2
+плотность,объём
+====================
+0.523   масса
+0.509   вес
+
+python ./similarity_search.py lsi_1000 компьютер,эппл 1
+компьютер,эппл
+====================
+0.641   макбук
+
 python ./similarity_search.py lsi_1000 interactive
 ```
