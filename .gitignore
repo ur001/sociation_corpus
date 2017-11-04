@@ -99,3 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+lsi_1000
+sociation_org_corpus
+__MACOSX

@@ -1,0 +1,2 @@
+numpy
+gensim==3.0.1
