@@ -40,7 +40,7 @@ class DictEncoder(object):
     def save(self, file_name):
         with open(file_name, 'w') as file:
             for item in self.decode:
-                file.write(item)
+                file.write(item + '\n')
 
     @classmethod
     def load(cls, file_name):

@@ -10,13 +10,13 @@ from django.db import connection
 from gensim import corpora
 
 from __future__ import print_function
-# from .utils import DictEncoder
 
 
 class DictEncoder(object):
     """
     Вспомогательная фигня для создания/хранения словарей
     Каждому новому слову сопоставляет целое число
+    Дублирует .utils.DictEncoder для python2
 
     >>> my_dict = DictEncoder()
     >>> print my_dict[u'слово']
@@ -157,6 +157,8 @@ def save_source_corpus(path, corpus, words_dict, assoc_dict):
     print("Saving assoc dict...")
     assoc_dict.save(path + '/assoc_dict.txt')
  
+
 # Создание и сохранение исходного корпуса со словарями и сохранение в папку ./sociation_org_corpus
 corpus, words_dict, assoc_dict = create_source_corpus(min_assoc_count=5, add_positivity=True)
 save_source_corpus('sociation_org_corpus', corpus, words_dict, assoc_dict)
+# zip -r sociation_org_corpus.zip sociation_org_corpus

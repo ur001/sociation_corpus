@@ -39,7 +39,7 @@ def print_top_similar(laf, word_names=None, count=15, assoc_mode=False):
 def interactive(laf, count=15, assoc_mode=False):
     # Метод поиска: по словам или по ассоциациям
     print('\nВведите слово или нажмите [Enter] для показа случайного.\nДля выхода введите [q] или [x].')
-    word_names = input()
+    word_names = input().lower()
     while True:
         if word_names in {'q', 'x'}:
             return
@@ -49,7 +49,8 @@ def interactive(laf, count=15, assoc_mode=False):
             print_top_similar(laf, word_names)
         except KeyError:
             print ("Слово не найдено\n")
-        word_names = input()   
+            
+        word_names = input().lower() 
 
 
 def get_random_word_names(laf):
@@ -67,7 +68,7 @@ if __name__ == '__main__':
         path = args[0]
 
     if len(args) >= 2 and args[1] != 'interactive':
-        word_names = args[1]
+        word_names = args[1].lower()
 
     if len(args) >= 3:
         try:

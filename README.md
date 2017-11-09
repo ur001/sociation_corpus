@@ -1,15 +1,15 @@
 # Корпус Sociation.org
 
-## Создание виртуального окружения
+## Настройка виртуального окружения
 ```
 pyenv virtualenv 3.6.3 sociation_corpus
 pyenv local sociation_corpus
 pip install -r ./requirements.txt
-unzip sociation_org_corpus.zip
 ```
 
 ## Создание модели и индекса
 ```
+unzip sociation_org_corpus.zip
 python ./train_model.py lsi_1000
 ```
 
