@@ -37,7 +37,7 @@ def train_model(corpus, words_dict, assoc_dict, num_topics=1000):
     corpus_tfidf = model_tfidf[corpus]
 
     print("Creating LSI model...")
-    model_lsi = models.LsiModel(corpus_tfidf, num_topics=1000)
+    model_lsi = models.LsiModel(corpus_tfidf, num_topics=num_topics)
 
     print("Transforming corpus to LSI...")
     corpus_lsi = model_lsi[corpus_tfidf]
