@@ -79,5 +79,15 @@ python ./similarity_search.py lsi_1000 компьютер,эппл 1
 ====================
 0.641   макбук
 
+python ./similarity_search.py lsi_1000 сын,-мужчина,женщина 1
+сын,-мужчина,женщина
+====================
+0.529   дочь
+
+python ./similarity_search.py lsi_1000 мама,-женщина,мужчина 1
+мама,-женщина,мужчина
+====================
+0.457   папа
+
 python ./similarity_search.py lsi_1000 interactive
 ```
