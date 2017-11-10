@@ -4,6 +4,7 @@
 Выполняется в консоли. Код для ознакомления
 """
 import os
+from collections import Counter
 from operator import itemgetter
 from random import randint
 import numpy as np
