@@ -126,8 +126,7 @@ class LSIAssocSimFinder(object):
             vec_tfidf = self.model_tfidf[vec_count]
             return self.model_lsi[vec_tfidf]
         else:
-            return self.model_lsi[vec_count]     
-        return vec_lsi                
+            return self.model_lsi[vec_count]
 
     def get_top_similar_to_words(self, word_names, count=15):
         """
