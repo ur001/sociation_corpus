@@ -112,7 +112,7 @@ class LSIAssocSimFinder(object):
         """
         mul = -1 if word_name.startswith('-') else 1
         corpus_idx = self.words_dict.encode[word_name.strip('-')]
-        word_vec = np.array(list(map(itemgetter(1), self.corpus_lsi[corpus_idx])))
+        word_vec = bow2nparray_vec(self.corpus_lsi[corpus_idx])
         return normalize(word_vec * mul)
 
     def get_lsi_assoc_vector(self, word_names, tfidf=False):
@@ -124,24 +124,23 @@ class LSIAssocSimFinder(object):
         vec_count = Counter(bow).items()
         if tfidf:
             vec_tfidf = self.model_tfidf[vec_count]
-            return normalize_list(self.model_lsi[vec_tfidf])
+            return normalize(bow2nparray_vec(self.model_lsi[vec_tfidf]))
         else:
-            return normalize_list(self.model_lsi[vec_count])
+            return normalize(bow2nparray_vec(self.model_lsi[vec_count]))
 
     def get_top_similar_to_words(self, word_names, count=15):
         """
         Выводит топ похожих слов на указанные
-        Можно несколько через щапятую и через минус: король,-мужчина,женщина = королева
+        Можно несколько через запятую и через минус: король,-мужчина,женщина = королева
         """
-        word_vec = sum(map(self.get_word_lsi_vector, word_names))
-        word_vec = [(idx, val) for idx, val in enumerate(word_vec)]
+        word_vec = nparray2bow_vec(sum(map(self.get_word_lsi_vector, word_names)))
         return self.get_top_similar(word_vec, count, exclude=word_names)
 
     def get_top_similar_for_assoc(self, word_names, count=15):
         """
         Выводит топ слов интерпетируя входные слова как ассоциации: мята,лайм = мохито
         """
-        word_vec = self.get_lsi_assoc_vector(word_names)
+        word_vec = nparray2bow_vec(self.get_lsi_assoc_vector(word_names))
         return self.get_top_similar(word_vec, count, exclude=word_names)
 
     def get_top_similar(self, word_vec, count=15, exclude=None):
@@ -158,6 +157,13 @@ class LSIAssocSimFinder(object):
         return self.words_dict.decode[randint(0, len(self.words_dict.decode))]
 
 
+def bow2nparray_vec(vec):
+    return np.array(list(map(itemgetter(1), vec)))
+
+def nparray2bow_vec(vec):
+    return [(idx, val) for idx, val in enumerate(vec) if val]
+
+
 def normalize(vec):
     norm = np.linalg.norm(vec)
     if norm == 0: 
@@ -166,4 +172,4 @@ def normalize(vec):
 
 
 def normalize_list(vec):
-    return list(normalize(list(np.array(vec))))    
+    return normalize(np.array(vec))
