@@ -113,7 +113,7 @@ class LSIAssocSimFinder(object):
         mul = -1 if word_name.startswith('-') else 1
         corpus_idx = self.words_dict.encode[word_name.strip('-')]
         word_vec = np.array(list(map(itemgetter(1), self.corpus_lsi[corpus_idx])))
-        return word_vec * mul
+        return normalize(word_vec * mul)
 
     def get_lsi_assoc_vector(self, word_names, tfidf=False):
         """
@@ -124,9 +124,9 @@ class LSIAssocSimFinder(object):
         vec_count = Counter(bow).items()
         if tfidf:
             vec_tfidf = self.model_tfidf[vec_count]
-            return self.model_lsi[vec_tfidf]
+            return normalize_list(self.model_lsi[vec_tfidf])
         else:
-            return self.model_lsi[vec_count]
+            return normalize_list(self.model_lsi[vec_count])
 
     def get_top_similar_to_words(self, word_names, count=15):
         """
@@ -156,3 +156,14 @@ class LSIAssocSimFinder(object):
 
     def get_random_word(self):
         return self.words_dict.decode[randint(0, len(self.words_dict.decode))]
+
+
+def normalize(vec):
+    norm = np.linalg.norm(vec)
+    if norm == 0: 
+       return vec
+    return vec / norm
+
+
+def normalize_list(vec):
+    return list(normalize(list(np.array(vec))))    
