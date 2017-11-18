@@ -46,7 +46,7 @@ def interactive(laf, count=15):
 
         word_names = word_names or get_random_word_names(laf)
         try:
-            print_top_similar(laf, word_names)
+            print_top_similar(laf, word_names, count)
         except KeyError:
             print ("Слово не найдено\n")
             

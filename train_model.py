@@ -5,8 +5,9 @@
 """
 import os
 import sys
+from tqdm import tqdm
 from gensim import corpora, models, similarities
-
+import numpy as np
 from utils import DictEncoder, LSIAssocSimFinder
 
 
@@ -17,17 +18,19 @@ def load_source_corpus(path):
     print("Loading source corpus...")
     # Вектора нормализованных ассоциаций слов word: {assoc1: weight1, assoc2: weight2}
     corpus = corpora.MmCorpus(path + '/corpus.mm')
+
     print("Loading words index...")
     # Словарь слов соответствующих порядковому номеру вектора в корпусе
     words_dict = DictEncoder.load(path + '/words_dict.txt')
-    print("Loading assoc words index...")
 
+    print("Loading assoc words index...")
     # Словарь слов соответствующих ассоциациям — компонентам вектора
     assoc_dict = DictEncoder.load(path + '/assoc_dict.txt')
+
     return corpus, words_dict, assoc_dict
 
 
-def train_model(corpus, words_dict, assoc_dict, num_topics=1000):
+def train_lsi_model(corpus, words_dict, assoc_dict, num_topics=1000):
     """
     Выполняет преобразование Bow -> DfIdf -> LSI, создаёт индекс
     и создаёт объект для поиска по словам
@@ -52,6 +55,13 @@ def train_model(corpus, words_dict, assoc_dict, num_topics=1000):
 if __name__ == '__main__':
     args = sys.argv[1:]
 
+    mode = 'lsi'
+    if len(args) > 1:
+        mode = args[1]
+
     corpus, words_dict, assoc_dict = load_source_corpus('sociation_org_corpus')
-    laf = train_model(corpus, words_dict, assoc_dict, num_topics=1000)
-    laf.save(args[0])
+    if mode == 'lsi':
+        num_topics = int(args[2]) if len(args) > 2 else 1000
+        model = train_lsi_model(corpus, words_dict, assoc_dict, num_topics=num_topics)
+
+    model.save(args[0])

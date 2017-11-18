@@ -169,7 +169,3 @@ def normalize(vec):
     if norm == 0: 
        return vec
     return vec / norm
-
-
-def normalize_list(vec):
-    return normalize(np.array(vec))

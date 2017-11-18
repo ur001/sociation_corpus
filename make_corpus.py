@@ -91,7 +91,7 @@ def normalize_vector(vector, mean_sample=5):
     """
     Возвращает нормализованный вектор деля на среднестатистическое отклонение
     """
-    std = np.std(vector.values()) or 1
+    std = np.std(vector.values() + [0])
     return {coord: value / std for coord, value in vector.iteritems()}
 
 
