@@ -144,7 +144,7 @@ class LSIAssocSimFinder(object):
         return self.get_top_similar(word_vec, count, exclude=word_names)
 
     def get_top_similar(self, word_vec, count=15, exclude=None):
-        exclude = set(self.words_dict.encode[item.strip('-')] for item in (exclude or []))
+        exclude = {self.words_dict.encode[item.strip('-')] for item in (exclude or [])}
         similarity = self.similarity_index[word_vec]
         top = sorted(enumerate(similarity), key=itemgetter(1), reverse=True)[:count + len(exclude)]
         return (
@@ -156,6 +156,56 @@ class LSIAssocSimFinder(object):
     def get_random_word(self):
         return self.words_dict.decode[randint(0, len(self.words_dict.decode))]
 
+    def compare_words(self, word1_features, word2_features, count=5, exclude=set(), similarity_degree=1/3, separate=False):
+        comparator = WordsComparator(
+            max(word1_features.values()),
+            max(word2_features.values()),
+            similarity_degree=similarity_degree
+        )
+
+        diff1, diff2, common = {}, {}, {}  # Характерное для первого слова, для второго и общее
+        features = set(word1_features.keys()).union(word2_features.keys())        
+
+        for feature in features:
+            if feature in exclude:
+                continue
+
+            feature1 = word1_features.get(feature, 0)
+            feature2 = word2_features.get(feature, 0)
+            diff1_value, diff2_value, common_value = comparator(feature1, feature2)
+            max_value = max(diff1_value, diff2_value, common_value)
+
+            if diff1_value == max_value or not separate:
+                diff1[feature] = diff1_value
+
+            if diff2_value == max_value or not separate:
+                diff2[feature] = diff2_value
+
+            if common_value == max_value or not separate:
+                common[feature] = common_value                
+
+        return (
+            sorted(diff1.items(), key=itemgetter(1), reverse=True)[:count],
+            sorted(diff2.items(), key=itemgetter(1), reverse=True)[:count],
+            sorted(common.items(), key=itemgetter(1), reverse=True)[:count],
+        )
+
+    def get_word_ids(self, words):
+        return {self.words_dict.encode[word.strip('-')] for word in (words or [])}
+
+
+class WordsComparator(object):
+    def __init__(self, feature1_max, feature2_max, similarity_degree=1/3):
+        self.feature1_max = feature1_max
+        self.feature2_max = feature2_max
+        self.prod_max = feature1_max * feature2_max
+        self.similarity_degree = similarity_degree
+
+    def __call__(self, feature1, feature2):
+        diff1_value = feature1 * (self.feature2_max - feature2) / self.prod_max
+        diff2_value = feature2 * (self.feature1_max - feature1) / self.prod_max
+        common_value = (feature1 * feature2 / self.prod_max) ** self.similarity_degree
+        return diff1_value, diff2_value, common_value
 
 def bow2nparray_vec(vec):
     return np.array(list(map(itemgetter(1), vec)))

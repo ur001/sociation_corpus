@@ -8,52 +8,63 @@ from random import choice
 from utils import DictEncoder, LSIAssocSimFinder
 
 
-def main(path, word_names=None, count=15, is_interactive=False):
+def main(path, command=None, count=15, is_interactive=False):
     laf = LSIAssocSimFinder.load(path)
-    if word_names:
-        print_top_similar(laf, word_names, count)    
+    if command:
+        do_command(laf, command, count)    
 
     if interactive:
         interactive(laf, count)
 
 
-def print_top_similar(laf, word_names, count=15, assoc_mode=False):
-    print(word_names)
-    print ("=" * 20)
+def do_command(laf, command, count=15):
+    if '|' in command: # Сравнение слов
+        word_names1, word_names2 = command.split('|')
+        diff1, diff2, common = laf.compare_words(
+            dict(laf.get_top_similar_to_words(word_names1.split(','), 500)),
+            dict(laf.get_top_similar_to_words(word_names2.split(','), 500)),
+            count,
+            exclude=set(word_names1.split(',')).union(set(word_names2.split(',')))
+        )
+        diff1, diff2, common 
+        print_results(word_names1, diff1)
+        print_results(word_names2, diff2)
+        print_results(command.replace('|', ' + '), common)
 
-    if word_names and word_names.startswith('~'):
-        get_top_similar = laf.get_top_similar_for_assoc
-        word_names = word_names[1:]
-    else:
-        get_top_similar = laf.get_top_similar_to_words
-          
-    # Слово или слова через запятую (столица,украина; король,-мужчина, женщина)
-    word_names = word_names.split(',')
-    for word_name, similarity in get_top_similar(word_names, count):    
+    elif command.startswith('~'):  # слова через запятую как вектор ассоциаций
+        results = laf.get_top_similar_for_assoc(command[1:].split(','), count)
+        print_results(command, results)
+
+    else:  # поиск похожих. Слово или слова через запятую (столица,украина; король,-мужчина, женщина)
+        results = laf.get_top_similar_to_words(command.split(','), count)
+        print_results(command, results)
+
+
+def print_results(title, results):
+    print(title)
+    print ("=" * 20)
+    
+    for word_name, similarity in results:    
         print("{:0.3f}\t{}".format(similarity, word_name))
 
     print("")
-
+          
 
 def interactive(laf, count=15):
-    # Метод поиска: по словам или по ассоциациям
-    print('\nВведите слово или нажмите [Enter] для показа случайного.\nДля выхода введите [q] или [x].')
-    word_names = input().lower()
-
     while True:
-        if word_names in {'q', 'x'}:
+        print('\nВведите слово или нажмите [Enter] для показа случайного.\nДля выхода введите [q] или [x].')
+        command = input().lower() or get_random_command(laf)
+
+        if command in {'q', 'x'}:
             return
 
-        word_names = word_names or get_random_word_names(laf)
         try:
-            print_top_similar(laf, word_names, count)
+            do_command(laf, command, count)
         except KeyError:
             print ("Слово не найдено\n")
             
-        word_names = input().lower() 
 
-
-def get_random_word_names(laf):
+def get_random_command(laf):
     return choice(['', '', '', '', '~']) + ",".join(
         (choice(['', '', '', '', '-']) if word_num >= 1 else '') + laf.get_random_word()
         for word_num in range(choice([1,1,1,1,1,2,2,2,3]))
@@ -62,13 +73,13 @@ def get_random_word_names(laf):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    path, word_names, count, is_interactive = 'lsi_1000', None, 15, False
+    path, command, count, is_interactive = 'lsi_1000', None, 15, False
 
     if len(args) >= 1:
         path = args[0]
 
     if len(args) >= 2 and args[1] != 'interactive':
-        word_names = args[1].lower()
+        command = args[1].lower()
 
     if len(args) >= 3:
         try:
@@ -79,4 +90,4 @@ if __name__ == '__main__':
     if 'interactive' in args:
         is_interactive = True
 
-    main(path, word_names, count, is_interactive)
+    main(path, command, count, is_interactive)
