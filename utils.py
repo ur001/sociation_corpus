@@ -79,7 +79,7 @@ class LSIAssocSimFinder(object):
         print ("Saving TfIdf model...")
         self.model_tfidf.save(name + '/model.tfidf')
         print ("Saving LSI corpus...")
-        corpora.BleiCorpus.serialize(name + '/corpus_lsi.lda-c', self.corpus_lsi)
+        corpora.MmCorpus.serialize(name + '/corpus_lsi.mm', self.corpus_lsi)
         print ("Saving similarity index...")
         self.similarity_index.save(name + '/corpus.index')
         print ("Saving words dict...")
@@ -94,7 +94,7 @@ class LSIAssocSimFinder(object):
         print ("Loading TfIdf model...")
         model_tfidf = models.TfidfModel.load(name + '/model.tfidf')
         print ("Loading LSI corpus...")
-        corpus_lsi = corpora.BleiCorpus(name + '/corpus_lsi.lda-c')
+        corpus_lsi = corpora.MmCorpus(name + '/corpus_lsi.mm')
         print ("Loading similarity index...")
         similarity_index = similarities.MatrixSimilarity.load(name + '/corpus.index')
         print ("Loading words index...")
@@ -190,8 +190,103 @@ class LSIAssocSimFinder(object):
             sorted(common.items(), key=itemgetter(1), reverse=True)[:count],
         )
 
-    def get_word_ids(self, words):
-        return {self.words_dict.encode[word.strip('-')] for word in (words or [])}
+
+class SimSimFinder(object):
+    """
+    Поиск ближайших слов по индексу на базе ближайших слов полученных из ассоциаций
+    """
+    def __init__(self, corpus, similarity_index, words_dict):
+        self.corpus = corpus
+        self.similarity_index = similarity_index
+        self.words_dict = words_dict
+
+    def save(self, name):
+        if not os.path.exists(name):
+            os.makedirs(name)
+
+        print ("Saving similarity corpus...")
+        corpora.MmCorpus.serialize(name + '/corpus.mm', self.corpus)
+        print ("Saving similarity index...")
+        self.similarity_index.save(name + '/corpus.index')
+        print ("Saving words dict...")
+        self.words_dict.save(name + '/words_dict.txt')               
+        
+    @classmethod
+    def load(cls, name):
+        print ("Loading similarity corpus...")
+        corpus= corpora.MmCorpus(name + '/corpus.mm')
+        print ("Loading similarity index...")
+        similarity_index = similarities.MatrixSimilarity.load(name + '/corpus.index')
+        print ("Loading words index...")
+        words_dict = DictEncoder.load(name + '/words_dict.txt')
+        return cls(corpus, similarity_index, words_dict)
+
+    def get_word_lsi_vector(self, word_name): 
+        """
+        Возвращает LSI-вектор проиндексированного слова
+        Тут слово — это документ в терминах корпуса
+        Слову соответствует вектор ассоциаций преобразованный в LSI-простраство
+        :rtype: np.array
+        """
+        mul = -1 if word_name.startswith('-') else 1
+        corpus_idx = self.words_dict.encode[word_name.strip('-')]
+        word_vec = bow2nparray_vec(self.corpus[corpus_idx], len(self.words_dict.decode))
+        return normalize(word_vec * mul)
+
+    def get_top_similar_to_words(self, word_names, count=15):
+        """
+        Выводит топ похожих слов на указанные
+        Можно несколько через запятую и через минус: король,-мужчина,женщина = королева
+        """
+        word_vec = nparray2bow_vec(sum(map(self.get_word_lsi_vector, word_names)))
+        return self.get_top_similar(word_vec, count, exclude=word_names)
+
+    def get_top_similar(self, word_vec, count=15, exclude=None):
+        exclude = {self.words_dict.encode[item.strip('-')] for item in (exclude or [])}
+        similarity = self.similarity_index[word_vec]
+        top = sorted(enumerate(similarity), key=itemgetter(1), reverse=True)[:count + len(exclude)]
+        return (
+            (self.words_dict.decode[word_idx], similarity) 
+            for word_idx, similarity in top
+            if word_idx not in exclude
+        )
+
+    def get_random_word(self):
+        return self.words_dict.decode[randint(0, len(self.words_dict.decode))]
+
+    def compare_words(self, word1_features, word2_features, count=5, exclude=set(), similarity_degree=1/3, separate=False):
+        comparator = WordsComparator(
+            max(word1_features.values()),
+            max(word2_features.values()),
+            similarity_degree=similarity_degree
+        )
+
+        diff1, diff2, common = {}, {}, {}  # Характерное для первого слова, для второго и общее
+        features = set(word1_features.keys()).union(word2_features.keys())        
+
+        for feature in features:
+            if feature in exclude:
+                continue
+
+            feature1 = word1_features.get(feature, 0)
+            feature2 = word2_features.get(feature, 0)
+            diff1_value, diff2_value, common_value = comparator(feature1, feature2)
+            max_value = max(diff1_value, diff2_value, common_value)
+
+            if diff1_value == max_value or not separate:
+                diff1[feature] = diff1_value
+
+            if diff2_value == max_value or not separate:
+                diff2[feature] = diff2_value
+
+            if common_value == max_value or not separate:
+                common[feature] = common_value                
+
+        return (
+            sorted(diff1.items(), key=itemgetter(1), reverse=True)[:count],
+            sorted(diff2.items(), key=itemgetter(1), reverse=True)[:count],
+            sorted(common.items(), key=itemgetter(1), reverse=True)[:count],
+        )
 
 
 class WordsComparator(object):
@@ -207,8 +302,13 @@ class WordsComparator(object):
         common_value = (feature1 * feature2 / self.prod_max) ** self.similarity_degree
         return diff1_value, diff2_value, common_value
 
-def bow2nparray_vec(vec):
-    return np.array(list(map(itemgetter(1), vec)))
+
+def bow2nparray_vec(vec, vec_len=None):
+    if vec_len is None or vec_len == len(vec):
+        return np.array(list(map(itemgetter(1), vec)))
+    else:
+        vec = dict(vec)
+        return np.array([vec.get(n, 0) for n in range(vec_len)])
 
 def nparray2bow_vec(vec):
     return [(idx, val) for idx, val in enumerate(vec) if val]
