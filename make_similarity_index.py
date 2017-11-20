@@ -35,11 +35,11 @@ def make_index_and_init_ssf(corpus, words_dict):
     """
     Индексирует корпус созданный по индексу и возвращает инициализиованную модель SimSimFinder
     """
-    print("Creating LSI model...")
-    model_lsi = models.LsiModel(corpus, num_topics=1000, dtype=np.float32)
+    # print("Creating LSI model...")
+    # model_lsi = models.LsiModel(corpus, num_topics=1000, dtype=np.float32)
 
-    print("Transforming corpus to LSI...")
-    corpus = model_lsi[corpus]
+    # print("Transforming corpus to LSI...")
+    # corpus = model_lsi[corpus]
 
     print("Creating similarity index for similarity corpus...")
     words_count = len(words_dict.decode)
