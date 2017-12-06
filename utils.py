@@ -79,7 +79,7 @@ class LSIAssocSimFinder(object):
         print ("Saving TfIdf model...")
         self.model_tfidf.save(name + '/model.tfidf')
         print ("Saving LSI corpus...")
-        corpora.BleiCorpus.serialize(name + '/corpus_lsi.lda-c', self.corpus_lsi)
+        corpora.MmCorpus.serialize(name + '/corpus_lsi.mm', self.corpus_lsi)
         print ("Saving similarity index...")
         self.similarity_index.save(name + '/corpus.index')
         print ("Saving words dict...")
@@ -94,7 +94,7 @@ class LSIAssocSimFinder(object):
         print ("Loading TfIdf model...")
         model_tfidf = models.TfidfModel.load(name + '/model.tfidf')
         print ("Loading LSI corpus...")
-        corpus_lsi = corpora.BleiCorpus(name + '/corpus_lsi.lda-c')
+        corpus_lsi = corpora.MmCorpus(name + '/corpus_lsi.mm')
         print ("Loading similarity index...")
         similarity_index = similarities.MatrixSimilarity.load(name + '/corpus.index')
         print ("Loading words index...")
@@ -156,7 +156,26 @@ class LSIAssocSimFinder(object):
     def get_random_word(self):
         return self.words_dict.decode[randint(0, len(self.words_dict.decode))]
 
-    def compare_words(self, word1_features, word2_features, count=5, exclude=set(), similarity_degree=1/3, separate=False):
+    def compare_words(
+        self, 
+        word1_features, 
+        word2_features, 
+        count=5, 
+        exclude=set(), 
+        similarity_degree=1/3, 
+        separate=False,
+        min_feature_value=0.3
+    ):  
+        """
+        Сравнение двух слов на основе списка похожих (или вообще каких-либо фич слова).
+        Возвращает 3 списка: характерные для первого слова, второго и общие
+        :param dict[int, float] word1_features: фичи первого слова: словарь {feature: value}
+        :param dict[int, float] word2_features: фичи второго слова: словарь {feature: value}
+        :param in count: число слов в результах
+        :param float similarity_degree: число 0..1. 0 — полное разделение слов, 1 — максимальный поиск сходства
+        :param bool separate: «срогое разделение» — запрет попадания одного слова в несколько колонок
+        :param float min_feature_value: минимальное значение 
+        """
         comparator = WordsComparator(
             max(word1_features.values()),
             max(word2_features.values()),
@@ -172,6 +191,9 @@ class LSIAssocSimFinder(object):
 
             feature1 = word1_features.get(feature, 0)
             feature2 = word2_features.get(feature, 0)
+            if feature1 < min_feature_value and feature2 < min_feature_value:
+                continue
+
             diff1_value, diff2_value, common_value = comparator(feature1, feature2)
             max_value = max(diff1_value, diff2_value, common_value)
 

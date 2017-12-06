@@ -30,7 +30,7 @@ def load_source_corpus(path):
     return corpus, words_dict, assoc_dict
 
 
-def train_lsi_model(corpus, words_dict, assoc_dict, num_topics=1000):
+def train_lsi_model(corpus, words_dict, assoc_dict, num_topics=1000, power_iters=2):
     """
     Выполняет преобразование Bow -> DfIdf -> LSI, создаёт индекс
     и создаёт объект для поиска по словам
@@ -39,8 +39,12 @@ def train_lsi_model(corpus, words_dict, assoc_dict, num_topics=1000):
     model_tfidf = models.TfidfModel(corpus)
     corpus_tfidf = model_tfidf[corpus]
 
-    print("Creating LSI model...")
-    model_lsi = models.LsiModel(corpus_tfidf, num_topics=num_topics)
+    print("Creating LSI model (num_topics={}, power_iters={})...".format(num_topics, power_iters))
+    chunksize = len(corpus_tfidf)
+    if power_iters:
+        model_lsi = models.LsiModel(corpus_tfidf, num_topics=num_topics, power_iters=power_iters, onepass=False, extra_samples=500)
+    else:
+        model_lsi = models.LsiModel(corpus_tfidf, num_topics=num_topics, chunksize=chunksize)
 
     print("Transforming corpus to LSI...")
     corpus_lsi = model_lsi[corpus_tfidf]
@@ -61,7 +65,8 @@ if __name__ == '__main__':
 
     corpus, words_dict, assoc_dict = load_source_corpus('sociation_org_corpus')
     if mode == 'lsi':
-        num_topics = int(args[2]) if len(args) > 2 else 1000
-        model = train_lsi_model(corpus, words_dict, assoc_dict, num_topics=num_topics)
+        num_topics = int(args[2]) if len(args) > 2 else 800
+        power_iters = int(args[3]) if len(args) > 3 else None
+        model = train_lsi_model(corpus, words_dict, assoc_dict, num_topics=num_topics, power_iters=power_iters)
 
     model.save(args[0])

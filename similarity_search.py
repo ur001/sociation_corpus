@@ -18,7 +18,12 @@ def main(path, command=None, count=15, is_interactive=False):
 
 
 def do_command(laf, command, count=15):
-    if '|' in command: # Сравнение слов
+    if command in {'p', '?'}:
+        print ("=" * 20)
+        print(sys.argv[1])
+        print ("=" * 20)
+        
+    elif '|' in command: # Сравнение слов
         word_names1, word_names2 = command.split('|')
         diff1, diff2, common = laf.compare_words(
             dict(laf.get_top_similar_to_words(word_names1.split(','), 500)),
