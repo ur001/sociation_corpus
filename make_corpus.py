@@ -58,7 +58,7 @@ class DictEncoder(object):
 
     def __contains__(self, item):
         return item in self.encode
-        
+
 
 def get_top_assoc(word_id, limit=50):
     """
@@ -71,28 +71,47 @@ def get_top_assoc(word_id, limit=50):
         SELECT word_assoc_id, popularity
         FROM sym_assoc 
         LEFT JOIN words_word w ON w.id = word_assoc_id
-        WHERE word_base_id={word_id}
+        WHERE word_base_id={word_id} AND popularity > 0
         ORDER BY popularity DESC
         LIMIT {limit}
     """.format(
         word_id=word_id,
         limit=limit
     ))
-    assoc_list = cursor.fetchall()
+    return dict(cursor.fetchall())
     
-    return {
-        # Переводим из логарифмической шкалы в линейную
-        assoc_word_id: log(similarity + 1) 
-        for assoc_word_id, similarity in assoc_list
-    }
+    # return {
+    #     # Переводим из логарифмической шкалы в линейную
+    #     assoc_word_id: log(similarity + 1) 
+    #     for assoc_word_id, similarity in assoc_list
+    # }
 
 
-def normalize_vector(vector, mean_sample=5):
+def normalize_vector(vector):
     """
     Возвращает нормализованный вектор деля на среднестатистическое отклонение
     """
     std = np.std(vector.values() + [0])
     return {coord: value / std for coord, value in vector.iteritems()}
+
+
+words_query = Word.objects.filter(is_active=True)
+words_popularity = dict(words_query.values_list('pk', 'sort_index'))
+words_popularity_sum = sum(words_popularity.values())
+
+
+def ppmize_word_assoc_vector(word_id, vector):
+    """
+    Взвешивает вектор ассоциаций к слову word_id с помощью PPMI
+    """
+    word_popularity = words_popularity[word_id]
+    result = {}
+    for word_assoc_id, assoc_popularity in vector.iteritems():
+        word_assoc_popularity = words_popularity[word_assoc_id]
+        pmi = np.log2(assoc_popularity * words_popularity_sum / word_popularity / word_assoc_popularity)
+        if pmi > 0:
+            result[word_assoc_id] = pmi
+    return result
 
 
 def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True):
@@ -104,29 +123,38 @@ def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True):
     :param bool add_positivity: добавляет оценку позитивности в виде слов ":)" и  ":("
     :yileds: list[(int, float)]
     """
-    words_query = Word.objects.filter(is_active=True)
+    global words_popularity_sum
+    
     words_id2name = dict(words_query.values_list('pk', 'name'))    
     good, bad = ':)', ':('
 
-    for word_id, name, positivity in words_query.filter(associations_count__gt=0).values_list('pk', 'name', 'positivity'):
-        top_assoc_ids = get_top_assoc(word_id, limit=500)
+    if add_positivity:
+        words_id2name[good] = good
+        words_id2name[bad] = bad
+        words_popularity[good] = sum(words_query.filter(positivity__gt=0).values_list('positivity', flat=True))
+        words_popularity[bad] = -sum(words_query.filter(positivity__lt=0).values_list('positivity', flat=True))
+        words_popularity_sum += words_popularity[good] + words_popularity[bad]
 
-        if len(top_assoc_ids) >= min_assoc_count:
-            top_assoc_ids = normalize_vector(top_assoc_ids)  # Делит на numpy.std
+    for word_id, name, positivity in words_query.filter(associations_count__gt=0).values_list('pk', 'name', 'positivity'):
+        top_assoc = get_top_assoc(word_id, limit=500)
+
+        if len(top_assoc) >= min_assoc_count:
+            # Добавляем данные о позитивности слова
+            if add_positivity:
+                if positivity > 0:
+                    top_assoc[good] = positivity
+
+                if positivity < 0:
+                    top_assoc[bad] = -positivity
+
+            # top_assoc_ids = normalize_vector(top_assoc)  # Делит на numpy.std
+            top_assoc = ppmize_word_assoc_vector(word_id, top_assoc)  # Делит на numpy.std
             words_dict.add(words_id2name[word_id])
 
             assoc_vec = [
                 (assoc_dict[words_id2name[word_assoc_id]], popularity)
-                for word_assoc_id, popularity in top_assoc_ids.iteritems()
+                for word_assoc_id, popularity in top_assoc.iteritems()
             ]
-
-            # Добавляем данные о позитивности слова
-            if add_positivity:
-                if positivity > 0:
-                    assoc_vec.append((assoc_dict[good], positivity))  
-
-                if positivity < 0:
-                    assoc_vec.append((assoc_dict[bad], -positivity))
 
             yield assoc_vec
 

@@ -229,8 +229,10 @@ class WordsComparator(object):
         common_value = (feature1 * feature2 / self.prod_max) ** self.similarity_degree
         return diff1_value, diff2_value, common_value
 
+
 def bow2nparray_vec(vec):
     return np.array(list(map(itemgetter(1), vec)))
+
 
 def nparray2bow_vec(vec):
     return [(idx, val) for idx, val in enumerate(vec) if val]
