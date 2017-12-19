@@ -95,19 +95,21 @@ def normalize_vector(vector):
     return {coord: value / std for coord, value in vector.iteritems()}
 
 
+CDS = 0.75  # коэффициент для PPMI
 words_query = Word.objects.filter(is_active=True)
 words_popularity = dict(words_query.values_list('pk', 'sort_index'))
-words_popularity_sum = sum(words_popularity.values())
+pow_cds = lambda iterable: (abs(value) ** cds for value in iterable)
+words_popularity_sum = sum(pow_cds(words_popularity.itervalues()))
 
 
-def ppmize_word_assoc_vector(word_id, vector):
+def ppmize_word_assoc_vector(word_id, vector, cds=CDS):
     """
     Взвешивает вектор ассоциаций к слову word_id с помощью PPMI
     """
     word_popularity = words_popularity[word_id]
     result = {}
     for word_assoc_id, assoc_popularity in vector.iteritems():
-        word_assoc_popularity = words_popularity[word_assoc_id]
+        word_assoc_popularity = words_popularity[word_assoc_id] ** cds
         pmi = np.log2(assoc_popularity * words_popularity_sum / word_popularity / word_assoc_popularity)
         if pmi > 0:
             result[word_assoc_id] = pmi
@@ -131,8 +133,8 @@ def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True):
     if add_positivity:
         words_id2name[good] = good
         words_id2name[bad] = bad
-        words_popularity[good] = sum(words_query.filter(positivity__gt=0).values_list('positivity', flat=True))
-        words_popularity[bad] = -sum(words_query.filter(positivity__lt=0).values_list('positivity', flat=True))
+        words_popularity[good] = sum(pow_cds(words_query.filter(positivity__gt=0).values_list('positivity', flat=True)))
+        words_popularity[bad] = sum(pow_cds(words_query.filter(positivity__lt=0).values_list('positivity', flat=True)))
         words_popularity_sum += words_popularity[good] + words_popularity[bad]
 
     for word_id, name, positivity in words_query.filter(associations_count__gt=0).values_list('pk', 'name', 'positivity'):
