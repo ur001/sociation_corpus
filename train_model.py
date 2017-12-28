@@ -30,15 +30,18 @@ def load_source_corpus(path):
     return corpus, words_dict, assoc_dict
 
 
-def train_lsi_model(corpus, words_dict, assoc_dict, num_topics=1000, power_iters=2):
+def train_lsi_model(corpus, words_dict, assoc_dict, num_topics=1000, power_iters=2, tfidf=False):
     """
     Выполняет преобразование Bow -> DfIdf -> LSI, создаёт индекс
     и создаёт объект для поиска по словам
     """
     print("Transforming TfIdf...")
     model_tfidf = models.TfidfModel(corpus)
-    # corpus_tfidf = model_tfidf[corpus]
-    corpus_tfidf = corpus
+    
+    if tfidf:
+        corpus_tfidf = model_tfidf[corpus]
+    else:
+        corpus_tfidf = corpus
 
     print("Creating LSI model (num_topics={}, power_iters={})...".format(num_topics, power_iters))
     chunksize = len(corpus_tfidf)

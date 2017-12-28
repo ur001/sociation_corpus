@@ -78,13 +78,16 @@ def get_top_assoc(word_id, limit=50):
         word_id=word_id,
         limit=limit
     ))
+
     return dict(cursor.fetchall())
-    
-    # return {
-    #     # Переводим из логарифмической шкалы в линейную
-    #     assoc_word_id: log(similarity + 1) 
-    #     for assoc_word_id, similarity in assoc_list
-    # }
+
+
+def log1p_vector(vector):
+    return {
+        # Переводим из логарифмической шкалы в линейную
+        coord: log(value + 1) 
+        for coord, value in vector.iteritems()
+    }    
 
 
 def normalize_vector(vector):
@@ -98,7 +101,7 @@ def normalize_vector(vector):
 CDS = 0.75  # коэффициент для PPMI
 words_query = Word.objects.filter(is_active=True)
 words_popularity = dict(words_query.values_list('pk', 'sort_index'))
-pow_cds = lambda iterable: (abs(value) ** cds for value in iterable)
+pow_cds = lambda iterable: (abs(value) ** CDS for value in iterable)
 words_popularity_sum = sum(pow_cds(words_popularity.itervalues()))
 
 
@@ -116,13 +119,14 @@ def ppmize_word_assoc_vector(word_id, vector, cds=CDS):
     return result
 
 
-def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True):
+def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True, normalize=None):
     """
     Итератор по корпусу через БД
     :param DictEncoder words_dict: словарь слов соответствующих номеру вектора
     :param DictEncoder assoc_dict: словарь слов компонентов вектора (ассоциаций)
     :param in min_assoc_count: минимальное число асоциаций к слову (для исключения малозаполненных слов)
     :param bool add_positivity: добавляет оценку позитивности в виде слов ":)" и  ":("
+    :param str | None normalize: нормализация: None, 'log_norm', 'ppmi'
     :yileds: list[(int, float)]
     """
     global words_popularity_sum
@@ -140,6 +144,15 @@ def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True):
     for word_id, name, positivity in words_query.filter(associations_count__gt=0).values_list('pk', 'name', 'positivity'):
         top_assoc = get_top_assoc(word_id, limit=500)
 
+        if normalize is None:
+            normalize_assoc_vector = lambda word_id, vector: vector
+        elif normalize == 'log_norm':
+            normalize_assoc_vector = lambda word_id, vector: normalize_vector(log1p_vector(vector)) 
+        elif normalize == 'ppmi':
+            normalize_assoc_vector = lambda word_id, vector: ppmize_word_assoc_vector(word_id, vector)
+        else:
+            raise Exception('unknown normalize "{}"'.format(normalize))
+
         if len(top_assoc) >= min_assoc_count:
             # Добавляем данные о позитивности слова
             if add_positivity:
@@ -149,8 +162,7 @@ def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True):
                 if positivity < 0:
                     top_assoc[bad] = -positivity
 
-            # top_assoc_ids = normalize_vector(top_assoc)  # Делит на numpy.std
-            top_assoc = ppmize_word_assoc_vector(word_id, top_assoc)  # Делит на numpy.std
+            top_assoc = normalize_assoc_vector(word_id, top_assoc) 
             words_dict.add(words_id2name[word_id])
 
             assoc_vec = [
@@ -161,7 +173,7 @@ def iter_corpus(words_dict, assoc_dict, min_assoc_count=5, add_positivity=True):
             yield assoc_vec
 
 
-def create_source_corpus(min_assoc_count=5, add_positivity=True):
+def create_source_corpus(min_assoc_count=5, add_positivity=True, normalize=None):
     """
     Создаёт исходноый корпус и 2 словаря к нему:
     1) words_dict: к словам — векторам
@@ -170,7 +182,8 @@ def create_source_corpus(min_assoc_count=5, add_positivity=True):
     print("Creating source corpus...")
     words_dict = DictEncoder()
     assoc_dict = DictEncoder()
-    corpus = list(iter_corpus(words_dict, assoc_dict, min_assoc_count=min_assoc_count, add_positivity=add_positivity))
+    params = dict(min_assoc_count=min_assoc_count, add_positivity=add_positivity, normalize=normalize)
+    corpus = list(iter_corpus(words_dict, assoc_dict, **params))
     return corpus, words_dict, assoc_dict
 
 
@@ -189,6 +202,6 @@ def save_source_corpus(path, corpus, words_dict, assoc_dict):
  
 
 # Создание и сохранение исходного корпуса со словарями и сохранение в папку ./sociation_org_corpus
-corpus, words_dict, assoc_dict = create_source_corpus(min_assoc_count=5, add_positivity=True)
+corpus, words_dict, assoc_dict = create_source_corpus(min_assoc_count=5, add_positivity=True, normalize='ppmi')
 save_source_corpus('sociation_org_corpus', corpus, words_dict, assoc_dict)
 # zip -r sociation_org_corpus.zip sociation_org_corpus
