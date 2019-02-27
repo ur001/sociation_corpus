@@ -1,2 +1,8 @@
 numpy
-gensim==3.0.1
+scipy
+sklearn
+tqdm
+gensim
+matplotlib
+pandas
+jupyter

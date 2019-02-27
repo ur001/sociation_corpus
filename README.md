@@ -9,13 +9,13 @@ pip install -r ./requirements.txt
 
 ## Создание модели и индекса
 ```
-unzip sociation_org_corpus.zip
-python ./train_model.py lsi_1000
+unzip source_corpus.zip
+python ./build_model.py.py model
 ```
 
 ## Поиск похожих слов
 ```
-python ./similarity_search.py lsi_1000 ассоциация 25
+python ./query_model.py model ассоциация 25
 ассоциация
 ====================
 0.623   ассоциации
@@ -44,7 +44,7 @@ python ./similarity_search.py lsi_1000 ассоциация 25
 0.331   схожесть
 0.331   совокупность
 
-python ./similarity_search.py lsi_1000 король,-мужчина,женщина
+python ./query_model.py model король,-мужчина,женщина
 король,-мужчина,женщина
 ====================
 0.485   королева
@@ -63,31 +63,31 @@ python ./similarity_search.py lsi_1000 король,-мужчина,женщин
 0.319   император
 0.319   девушка
 
-python ./similarity_search.py lsi_1000 столица,франция 1
+python ./query_model.py model столица,франция 1
 столица,франция
 ====================
 0.564   париж
 
-python ./similarity_search.py lsi_1000 плотность,объём 2
+python ./query_model.py model плотность,объём 2
 плотность,объём
 ====================
 0.523   масса
 0.509   вес
 
-python ./similarity_search.py lsi_1000 компьютер,эппл 1
+python ./query_model.py model компьютер,эппл 1
 компьютер,эппл
 ====================
 0.641   макбук
 
-python ./similarity_search.py lsi_1000 сын,-мужчина,женщина 1
+python ./query_model.py model сын,-мужчина,женщина 1
 сын,-мужчина,женщина
 ====================
 0.529   дочь
 
-python ./similarity_search.py lsi_1000 мама,-женщина,мужчина 1
+python ./query_model.py model мама,-женщина,мужчина 1
 мама,-женщина,мужчина
 ====================
 0.457   папа
 
-python ./similarity_search.py lsi_1000 interactive
+python ./query_model.py model
 ```
